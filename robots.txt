@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://fuunyking44.github.io/pdf-font-extractor/sitemap.xml

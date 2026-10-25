@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Extract Fonts from a PDF — Download Embedded TTF &amp; OTF (Free, No Upload)</title>
+<meta name="description" content="Pull the fonts embedded inside any PDF and download them as TTF, OTF or CFF files. Runs entirely in your browser — the PDF is never uploaded to a server, there is no signup and no page limit.">
+<link rel="canonical" href="https://fuunyking44.github.io/pdf-font-extractor/">
+<meta name="google-site-verification" content="eEVg1x7KDp1_De5K8valB13GkUjtw9JPwnJHj01XOCw" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#7c3aed">
+<meta property="og:title" content="Extract Fonts from a PDF — download embedded TTF &amp; OTF">
+<meta property="og:description" content="Pull the fonts embedded inside a PDF and download them as TTF, OTF or CFF. Runs in your browser, nothing is uploaded.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://fuunyking44.github.io/pdf-font-extractor/">
+<meta name="twitter:card" content="summary">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "PDF Font Extractor",
+  "url": "https://fuunyking44.github.io/pdf-font-extractor/",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any (runs in the browser)",
+  "browserRequirements": "Requires JavaScript",
+  "description": "Extracts the fonts embedded in a PDF file and lets you download them as TTF, OTF or CFF. All parsing happens locally in the browser.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "featureList": [
+    "Finds every embedded font program in a PDF",
+    "Downloads TrueType (TTF), OpenType (OTF) and raw CFF files",
+    "Reads font names from the PDF font descriptors",
+    "No upload, no signup, no page limit"
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How do I extract a font from a PDF?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Open this page, drop the PDF on the box, and wait a moment. The tool scans the file for embedded font programs (FontFile2 and FontFile3 streams), decompresses them, and lists every font it finds with a download button. TrueType fonts come out as .ttf and OpenType fonts as .otf, which you can install like any other font."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why are some fonts missing from the results?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A PDF only contains a font if the person who made it embedded one. Documents that use the standard PDF fonts (Helvetica, Times, Courier) usually embed nothing at all, because every PDF reader already has them. Those fonts cannot be extracted — there is simply no font file inside the PDF."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why does the extracted font only contain a few characters?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Most PDFs embed a subset of the font: only the glyphs that actually appear on the page. There is no way to recover the missing characters, because they were never written into the file. A PDF that keeps the full font is either very large or was exported with subsetting switched off."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is the PDF uploaded to a server?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. The file is read with the FileReader API and parsed in JavaScript inside your browser tab. Nothing is transmitted, nothing is logged and nothing is stored, so confidential contracts and internal documents are safe to open here."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is a .cff file and can I install it?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Some PDFs store fonts as a bare CFF stream (subtype Type1C or CIDFontType0C) instead of a complete OpenType file. That stream has no font container around it, so most operating systems will not install it directly. It still opens in font editors such as FontForge, where you can save it as OTF."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Am I allowed to reuse a font I extracted from a PDF?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A font file carries a licence, and embedding it in a PDF does not transfer that licence to you. Many commercial fonts are licensed for document embedding only, not for reuse in your own designs. Check the foundry's terms before using an extracted font in a project you publish."
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#14131a; --muted:#5f5b6b; --line:#e6e4ee;
+    --brand:#7c3aed; --brand-soft:#f3eeff; --ok:#0f8a5f; --warn:#b4530a;
+    --card:#ffffff; --shadow:0 1px 2px rgba(20,19,26,.06),0 8px 24px rgba(20,19,26,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f0e14; --fg:#f2f0f7; --muted:#a29dae; --line:#26232f;
+           --brand:#a678ff; --brand-soft:#1d1730; --card:#17151f; --ok:#3ddc97; --warn:#ffb163;
+           --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3); }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto;padding:0 20px}
+  header{padding:28px 0 8px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;text-decoration:none;color:inherit}
+  .dot{width:22px;height:22px;border-radius:7px;background:var(--brand);display:inline-block;position:relative}
+  .dot:after{content:"A";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800}
+  h1{font-size:clamp(26px,4vw,38px);line-height:1.2;letter-spacing:-.02em;margin:22px 0 10px}
+  h1 span{color:var(--brand)}
+  .sub{color:var(--muted);margin:0 0 26px;font-size:17px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+  #drop{display:block;padding:46px 24px;text-align:center;cursor:pointer;
+    border:2px dashed var(--line);border-radius:16px;transition:.15s;background:var(--card)}
+  #drop:hover,#drop.over{border-color:var(--brand);background:var(--brand-soft)}
+  #drop strong{display:block;font-size:17px;margin-bottom:6px}
+  #drop small{color:var(--muted)}
+  input[type=file]{display:none}
+  #status{margin-top:16px;font-size:15px;color:var(--muted);min-height:24px}
+  #status.err{color:var(--warn)}
+  #status b{color:var(--fg)}
+  .summary{display:none;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:22px 0 12px}
+  .summary.on{display:flex}
+  .summary .meta{font-size:15px;color:var(--muted)}
+  .summary .meta b{color:var(--fg)}
+  .btn{border:1px solid var(--line);background:var(--card);color:var(--fg);font:600 14px/1 inherit;
+    padding:10px 16px;border-radius:10px;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--brand);color:var(--brand)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{opacity:.9;color:#fff}
+  .row{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);
+    border-radius:14px;background:var(--card);margin-bottom:10px}
+  .row .glyph{width:46px;height:46px;flex:none;border-radius:10px;background:var(--brand-soft);
+    display:grid;place-items:center;font-size:22px;font-weight:700;color:var(--brand);overflow:hidden}
+  .row .info{flex:1;min-width:0}
+  .row .name{font-weight:650;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:13px;color:var(--muted)}
+  .tag{padding:1px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600}
+  .tag.ttf{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
+  .tag.otf{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
+  .tag.cff{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
+  .row .btn{flex:none}
+  h2{font-size:20px;letter-spacing:-.01em;margin:44px 0 12px}
+  h3{font-size:16px;margin:22px 0 6px}
+  p{color:var(--muted);margin:0 0 14px}
+  p strong{color:var(--fg)}
+  ul{color:var(--muted);padding-left:20px;margin:0 0 14px}
+  li{margin-bottom:6px}
+  table{width:100%;border-collapse:collapse;margin:16px 0 22px;font-size:15px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+  td code{background:var(--brand-soft);padding:1px 6px;border-radius:5px;font-size:13px}
+  details{border-top:1px solid var(--line);padding:14px 0}
+  details summary{cursor:pointer;font-weight:650;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  details summary:before{content:"+";color:var(--brand);font-weight:800;margin-right:10px}
+  details[open] summary:before{content:"–"}
+  details p{margin:10px 0 0}
+  footer{margin:48px 0 60px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+  footer a{color:var(--brand);text-decoration:none}
+  .note{background:var(--brand-soft);border-radius:12px;padding:14px 16px;font-size:14px;color:var(--muted);margin:18px 0}
+  .note b{color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="logo" href="https://fuunyking44.github.io/"><span class="dot"></span>Small Browser Tools</a>
+    <h1>Extract the <span>fonts</span> embedded in a PDF</h1>
+    <p class="sub">Drop a PDF and get every embedded font back as a TTF, OTF or CFF file. Parsing happens in your browser — the document is never uploaded.</p>
+  </header>
+
+  <label id="drop" for="file">
+    <strong>Drop a PDF here, or click to choose one</strong>
+    <small>No size limit · no signup · nothing leaves your device</small>
+  </label>
+  <input type="file" id="file" accept="application/pdf,.pdf">
+  <div id="status"></div>
+
+  <div class="summary" id="summary">
+    <div class="meta" id="meta"></div>
+    <button class="btn primary" id="all">Download all</button>
+  </div>
+
+  <div id="list"></div>
+
+  <h2>How it works</h2>
+  <p>A PDF does not store text as text. It stores instructions to draw glyphs, and those glyphs come from a <strong>font program</strong> that is usually copied into the file — that copy is what makes a PDF look the same on every machine. The two places it can live are named <code>FontFile2</code> (TrueType) and <code>FontFile3</code> (OpenType or CFF), and each one is a compressed stream somewhere in the file.</p>
+  <p>This tool reads the whole file, finds every stream object, decompresses the ones that are deflated, and keeps whatever begins with a font signature — <code>00 01 00 00</code> for TrueType, <code>OTTO</code> for OpenType, <code>ttcf</code> for a collection. Then it looks up the matching font descriptor to recover the real font name instead of a meaningless object number.</p>
+
+  <h3>What you get, and what you cannot get</h3>
+  <table>
+    <thead><tr><th>Embedding</th><th>File you get</th><th>Usable as a font?</th></tr></thead>
+    <tbody>
+      <tr><td><code>FontFile2</code> — TrueType</td><td><code>.ttf</code></td><td>Yes, install it directly</td></tr>
+      <tr><td><code>FontFile3 / OpenType</code></td><td><code>.otf</code></td><td>Yes, install it directly</td></tr>
+      <tr><td><code>FontFile3 / Type1C</code></td><td><code>.cff</code></td><td>Not directly — open in FontForge and re-save as OTF</td></tr>
+      <tr><td>Standard 14 fonts</td><td>nothing</td><td>Nothing was embedded, so there is nothing to extract</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>The subset problem, stated plainly.</b> Almost every PDF embeds only the glyphs that appear on its pages. If your document uses 12 letters of a typeface, the extracted file contains those 12 letters and nothing else. This is not a limitation of this tool — the other characters were thrown away when the PDF was created, and no tool can recover them. A PDF written without subsetting is rare but does exist, and those extract cleanly.
+  </div>
+
+  <h2>Questions people actually ask</h2>
+  <details open>
+    <summary>How do I extract a font from a PDF?</summary>
+    <p>Drop the PDF on the box above. The tool lists every embedded font with its name, its format and its size. Press download next to a font to save it, or “Download all” to get every one. There is no step two.</p>
+  </details>
+  <details>
+    <summary>Why are some fonts missing from the results?</summary>
+    <p>Because the PDF never embedded them. Documents that use Helvetica, Times or Courier usually embed nothing at all, since every reader already ships those. If the list is empty, the file genuinely has no font programs inside it.</p>
+  </details>
+  <details>
+    <summary>Why does the extracted font only contain a few characters?</summary>
+    <p>Subsetting. See the note above — most PDF writers keep only the glyphs on the page to save space. The missing characters are not hidden in the file; they are absent.</p>
+  </details>
+  <details>
+    <summary>Is my PDF uploaded anywhere?</summary>
+    <p>No. The file is read with the browser's FileReader API and parsed in JavaScript in this tab. Nothing is sent, logged or stored. You can disconnect from the internet after the page loads and it will still work.</p>
+  </details>
+  <details>
+    <summary>What is a .cff file and can I install it?</summary>
+    <p>A bare CFF stream has no font container around it, so Windows and macOS will not install it by double-clicking. Open it in FontForge and export as OTF, or drop it into a web font pipeline that accepts raw CFF.</p>
+  </details>
+  <details>
+    <summary>Am I allowed to reuse a font I extracted?</summary>
+    <p>A font file carries its own licence, and being able to extract it does not grant you the right to use it. Many commercial fonts are licensed for document embedding only. Check the foundry's terms before shipping an extracted font in your own work.</p>
+  </details>
+
+  <footer>
+    Part of <a href="https://fuunyking44.github.io/">Small Browser Tools</a> — single-purpose tools that run locally. Also try the <a href="https://fuunyking44.github.io/twitch-emote-resizer/">Twitch emote resizer</a>.
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var drop=document.getElementById('drop'), input=document.getElementById('file'),
+      status=document.getElementById('status'), list=document.getElementById('list'),
+      summary=document.getElementById('summary'), meta=document.getElementById('meta'),
+      allBtn=document.getElementById('all');
+  var found=[];
+
+  function say(msg,isErr){ status.textContent=msg; status.className=isErr?'err':''; }
+
+  ['dragenter','dragover'].forEach(function(e){
+    drop.addEventListener(e,function(ev){ ev.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave','drop'].forEach(function(e){
+    drop.addEventListener(e,function(ev){ ev.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop',function(ev){
+    var f=ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+    if(f) handle(f);
+  });
+  input.addEventListener('change',function(){ if(input.files[0]) handle(input.files[0]); });
+
+  function latin1(u8){
+    var s='', CH=0x8000;
+    for(var i=0;i<u8.length;i+=CH){
+      s+=String.fromCharCode.apply(null,u8.subarray(i,i+CH));
+    }
+    return s;
+  }
+
+  async function inflate(bytes){
+    if(bytes.length<2) return null;
+    // try zlib wrapper first, then raw deflate
+    for(const fmt of ['deflate','deflate-raw']){
+      try{
+        var ds=new DecompressionStream(fmt);
+        var out=await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+        if(out.byteLength>0) return new Uint8Array(out);
+      }catch(e){/* try next */}
+    }
+    return null;
+  }
+
+  function fontKind(b){
+    if(!b||b.length<16) return null;
+    var h=(b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3];
+    if(h===0x00010000) return {ext:'ttf',label:'TTF'};
+    if(h===0x4F54544F) return {ext:'otf',label:'OTF'};          // OTTO
+    if(h===0x74746366) return {ext:'ttc',label:'TTC'};          // ttcf
+    if(h===0x74727565) return {ext:'ttf',label:'TTF'};          // true
+    if(h===0x74797031) return {ext:'cff',label:'CFF'};          // typ1
+    return null;
+  }
+
+  function cleanName(raw){
+    if(!raw) return '';
+    var n=raw.replace(/^#([0-9A-Fa-f]{2})/g, function(m,h){return String.fromCharCode(parseInt(h,16));});
+    n=n.replace(/^[A-Z]{6}\+/, '');            // subset prefix
+    n=n.replace(/[,_\-]+/g,' ').replace(/\s+/g,' ').trim();
+    return n;
+  }
+
+  // 从 sfnt 的 name 表里读真实字体名（比 PDF 里的 /FontName 可靠，后者常被压缩进对象流）
+  function ttfName(b){
+    try{
+      if(b.length<12) return '';
+      var dv=new DataView(b.buffer, b.byteOffset, b.byteLength);
+      var tag0=String.fromCharCode(b[0],b[1],b[2],b[3]);
+      if(tag0==='ttcf') return '';             // 字体集合，结构不同，跳过
+      var num=dv.getUint16(4);
+      if(num<=0||num>512) return '';
+      var nameOff=0, off=12;
+      for(var i=0;i<num;i++,off+=16){
+        if(off+16>b.length) break;
+        var tag=String.fromCharCode(b[off],b[off+1],b[off+2],b[off+3]);
+        if(tag==='name'){ nameOff=dv.getUint32(off+8); break; }
+      }
+      if(!nameOff||nameOff+6>b.length) return '';
+      var count=dv.getUint16(nameOff+2);
+      var strOff=nameOff+dv.getUint16(nameOff+4);
+      var want={1:'',4:'',6:''};
+      for(var j=0;j<count && j<400;j++){
+        var rec=nameOff+6+j*12;
+        if(rec+12> b.length) break;
+        var pid=dv.getUint16(rec), nid=dv.getUint16(rec+6);
+        var len=dv.getUint16(rec+8), ofs=dv.getUint16(rec+10);
+        if(!(nid in want) || want[nid]) continue;
+        if(strOff+ofs+len>b.length) continue;
+        var s='';
+        if(pid===3||pid===0){
+          for(var k=0;k+1<len;k+=2) s+=String.fromCharCode(dv.getUint16(strOff+ofs+k));
+        }else{
+          for(var k2=0;k2<len;k2++) s+=String.fromCharCode(b[strOff+ofs+k2]);
+        }
+        s=s.replace(/\u0000/g,'').trim();
+        if(s) want[nid]=s;
+      }
+      return (want[4]||want[6]||want[1]||'').trim();
+    }catch(e){ return ''; }
+  }
+
+  async function handle(file){
+    if(!/\.pdf$/i.test(file.name) && file.type!=='application/pdf'){
+      say('That does not look like a PDF. Choose a .pdf file.',true); return;
+    }
+    list.innerHTML=''; found=[]; summary.classList.remove('on');
+    say('Reading '+file.name+' ('+(file.size/1048576).toFixed(2)+' MB)…');
+
+    var buf;
+    try{ buf=new Uint8Array(await file.arrayBuffer()); }
+    catch(e){ say('Could not read the file.',true); return; }
+
+    var head=latin1(buf.subarray(0,1024));
+    if(head.indexOf('%PDF')<0){ say('This file is not a valid PDF (no %PDF header).',true); return; }
+
+    var S=latin1(buf);
+    if(/\/Encrypt\s+\d+\s+\d+\s+R/.test(S)){
+      say('This PDF is encrypted, so its font streams cannot be read without the password.',true);
+      return;
+    }
+
+    say('Scanning objects …');
+    await new Promise(function(r){ setTimeout(r,30); });
+
+    // index every top-level object
+    var re=/(\d+)\s+\d+\s+obj\b/g, m, heads=[];
+    while((m=re.exec(S))){ heads.push({num:+m[1],at:m.index,bodyAt:re.lastIndex}); }
+
+    var objByNum={};
+    for(var i=0;i<heads.length;i++){
+      var end = i+1<heads.length ? heads[i+1].at : S.length;
+      objByNum[heads[i].num]={bodyAt:heads[i].bodyAt,end:end};
+    }
+
+    function resolveLen(dict){
+      var d=dict.match(/\/Length\s+(\d+)(\s+\d+\s+R)?/);
+      if(!d) return null;
+      if(d[2]){
+        var o=objByNum[+d[1]];
+        if(!o) return null;
+        var seg=S.slice(o.bodyAt,o.end);
+        var n=seg.match(/(\d+)/);
+        return n?+n[1]:null;
+      }
+      return +d[1];
+    }
+
+    // map font stream object number -> descriptor font name
+    var nameByObj={};
+
+    function walkBackOwner(idx){
+      var owner=null;
+      for(var k=0;k<heads.length;k++){
+        if(heads[k].at < idx && (k+1>=heads.length || heads[k+1].at > idx)){ owner=heads[k]; break; }
+      }
+      return owner;
+    }
+
+    function takeNames(text){
+      var reN=/\/(?:FontName|BaseFont)\s*\/([^\s\/\[\]<>(){}]+)/g, n;
+      while((n=reN.exec(text))){
+        var tail=text.substr(reN.lastIndex, 1600);
+        var f=tail.match(/\/(FontFile2|FontFile3)\s+(\d+)\s+\d+\s+R/);
+        if(f && !nameByObj[+f[2]]) nameByObj[+f[2]]=n[1];
+      }
+    }
+
+    takeNames(S);
+
+    // 解压对象流（/Type /ObjStm）——字体描述符常被压在里面，不解压就找不到 /BaseFont
+    for(var q=0;q<heads.length;q++){
+      var hq=heads[q];
+      var stopQ=(q+1<heads.length)?heads[q+1].at:S.length;
+      var segQ=S.slice(hq.bodyAt, stopQ);
+      if(segQ.indexOf('/ObjStm')<0) continue;
+      var siQ=segQ.indexOf('stream');
+      if(siQ<0) continue;
+      var dictQ=segQ.slice(0,siQ);
+      var startQ=hq.bodyAt+siQ+6;
+      if(S[startQ]==='\r') startQ++;
+      if(S[startQ]==='\n') startQ++;
+      var lenQ=resolveLen(dictQ);
+      var endQ=(lenQ!=null&&lenQ>0)?startQ+lenQ:S.indexOf('endstream', startQ);
+      if(endQ<0) endQ=stopQ;
+      var rawQ=buf.subarray(startQ, Math.min(endQ, buf.length));
+      if(!rawQ.length) continue;
+      var infQ=await inflate(rawQ);
+      if(infQ) takeNames(latin1(infQ));
+    }
+
+    var seen={};
+    var count=0;
+
+    for(var j=0;j<heads.length;j++){
+      var h=heads[j];
+      var stop = (j+1<heads.length) ? heads[j+1].at : S.length;
+      var seg=S.slice(h.bodyAt, stop);
+      var si=seg.indexOf('stream');
+      if(si<0) continue;
+      // must be the stream keyword, not endstream
+      if(seg.substr(Math.max(0,si-3),3)==='end') continue;
+
+      var dict=seg.slice(0, si);
+      var dataStart = h.bodyAt + si + 6;
+      if(S[dataStart]==='\r') dataStart++;
+      if(S[dataStart]==='\n') dataStart++;
+
+      var len=resolveLen(dict);
+      var dataEnd = (len!=null && len>0) ? dataStart+len
+                    : (function(){ var e=S.indexOf('endstream', dataStart); return e<0?stop:e; })();
+
+      if(dataEnd>buf.length) dataEnd=Math.min(dataEnd, buf.length);
+      var raw=buf.subarray(dataStart, dataEnd);
+      if(!raw.length) continue;
+
+      var payload=raw;
+      var flate=/\/FlateDecode/.test(dict);
+      var kind=fontKind(raw);
+
+      if(!kind && flate){
+        var inf=await inflate(raw);
+        if(inf){ payload=inf; kind=fontKind(payload); }
+      }
+      if(!kind) continue;
+      if(/\/Subtype\s*\/CIDFontType0C/.test(dict)) kind={ext:'cff',label:'CFF'};
+
+      // dedupe identical payloads
+      var sig=payload.length+':'+[].slice.call(payload.subarray(0,64)).join(',');
+      if(seen[sig]) continue;
+      seen[sig]=1;
+
+      var nm=cleanName(ttfName(payload)) || cleanName(nameByObj[h.num]) || ('embedded font '+h.num);
+      found.push({name:nm, bytes:payload, ext:kind.ext, label:kind.label});
+      count++;
+    }
+
+    if(!count){
+      say('No embedded fonts found. Either this PDF only uses the standard fonts, or the text is an image (scanned).',true);
+      return;
+    }
+
+    say(count+(count===1?' font':' fonts')+' found.');
+    render(file.name);
+  }
+
+  function kb(n){ return n<1048576 ? (n/1024).toFixed(0)+' KB' : (n/1048576).toFixed(2)+' MB'; }
+
+  function safeFile(name,ext){
+    var base=name.replace(/[\\/:*?"<>|]+/g,' ').trim().replace(/\s+/g,'-');
+    if(!base) base='font';
+    return base+'.'+ext;
+  }
+
+  function download(item){
+    var blob=new Blob([item.bytes],{type:'font/'+item.ext});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download=safeFile(item.name,item.ext);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); },4000);
+  }
+
+  function render(fileName){
+    list.innerHTML='';
+    found.forEach(function(item){
+      var row=document.createElement('div'); row.className='row';
+      var glyph=document.createElement('div'); glyph.className='glyph'; glyph.textContent='Aa';
+      var info=document.createElement('div'); info.className='info';
+      var nm=document.createElement('div'); nm.className='name'; nm.textContent=item.name;
+      var tags=document.createElement('div'); tags.className='tags';
+      var t1=document.createElement('span'); t1.className='tag '+item.ext; t1.textContent=item.label;
+      var t2=document.createElement('span'); t2.className='tag'; t2.textContent=kb(item.bytes.length);
+      var t3=document.createElement('span'); t3.className='tag'; t3.textContent='.'+item.ext;
+      tags.appendChild(t1); tags.appendChild(t2); tags.appendChild(t3);
+      info.appendChild(nm); info.appendChild(tags);
+      var btn=document.createElement('button'); btn.className='btn'; btn.textContent='Download';
+      btn.addEventListener('click',function(){ download(item); });
+      row.appendChild(glyph); row.appendChild(info); row.appendChild(btn);
+      list.appendChild(row);
+    });
+    meta.innerHTML='<b>'+found.length+'</b> embedded font'+(found.length===1?'':'s')+' in <b>'+fileName+'</b>';
+    summary.classList.add('on');
+  }
+
+  allBtn.addEventListener('click',function(){
+    found.forEach(function(item,i){ setTimeout(function(){ download(item); }, i*450); });
+  });
+})();
+</script>
+</body>
+</html>
